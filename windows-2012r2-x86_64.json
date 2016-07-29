@@ -1,0 +1,138 @@
+{
+  "variables": {
+    "iso_url": "http://download.microsoft.com/download/B/9/9/B999286E-0A47-406D-8B3D-5B5AD7373A4A/9600.16384.WINBLUE_RTM.130821-1623_X64FRE_ENTERPRISE_EVAL_EN-US-IRM_CENA_X64FREE_EN-US_DV5.ISO",
+    "iso_checksum_type": "md5",
+    "iso_checksum": "5e4ecb86fd8619641f1d58f96e8561ec",
+    "autounattend_vagrant": "./answer_files/2012_r2/Autounattend.xml",
+    "autounattend_aws": "./answer_files/2012_r2/aws/Autounattend.xml",
+    "access_key": "",
+    "secret_key": "",
+    "user": "Administrator",
+    "password": "notsosecret",
+    "version": "0.1.TIMESTAMP"
+  },
+  "builders": [
+    {
+      "type": "virtualbox-iso",
+      "name": "vagrant-2012r2-dev",
+      "vm_name": "vagrant-2012r2-dev",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "headless": true,
+      "boot_wait": "2m",
+      "ssh_username": "vagrant",
+      "ssh_password": "vagrant",
+      "ssh_wait_timeout": "6h",
+      "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
+      "guest_os_type": "Windows2012_64",
+      "disk_size": 61440,
+      "floppy_files": [
+        "{{user `autounattend_vagrant`}}",
+        "./scripts/windows/microsoft-updates.bat",
+        "./scripts/windows/win-updates.ps1",
+        "./scripts/windows/openssh.ps1",
+        "./scripts/windows/oracle-cert.cer"
+      ],
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "8192"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "4"
+        ]
+      ]
+    },
+    {
+      "type": "virtualbox-iso",
+      "name": "2012r2-ami",
+      "vm_name": "2012r2-ami",
+      "guest_additions_mode": "disable",
+      "iso_url": "{{user `iso_url`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "headless": true,
+      "boot_wait": "2m",
+      "communicator": "winrm",
+      "winrm_username": "Administrator",
+      "winrm_password": "notsosecret",
+      "winrm_timeout": "4h",
+      "winrm_port": 5985,
+      "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
+      "guest_os_type": "Windows2012_64",
+      "disk_size": 61440,
+      "floppy_files": [
+        "{{user `autounattend_aws`}}",
+        "./scripts/windows/microsoft-updates.bat",
+        "./scripts/windows/win-updates.ps1",
+        "./scripts/windows/openssh.ps1",
+        "./scripts/windows/oracle-cert.cer"
+      ],
+        "vboxmanage": [
+          [
+            "modifyvm",
+            "{{.Name}}",
+            "--memory",
+            "8192"
+          ],
+          [
+            "modifyvm",
+            "{{.Name}}",
+            "--cpus",
+            "4"
+          ]
+       ]
+     }
+	  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "only": ["vagrant-2012r2-dev"],
+      "remote_path": "/tmp/script.bat",
+      "execute_command": "{{.Vars}} cmd /c C:/Windows/Temp/script.bat",
+      "scripts": [
+        "./scripts/windows/vm-guest-tools.bat",
+        "./scripts/windows/vagrant-ssh.bat",
+        "./scripts/windows/enable-rdp.bat",
+        "./scripts/windows/disable-auto-logon.bat",
+        "./scripts/windows/compact.bat"
+      ]
+    },
+    {
+      "type": "powershell",
+      "only": ["2012r2-ami"],
+      "elevated_user": "Administrator",
+      "elevated_password": "notsosecret",
+      "scripts": [
+        "./scripts/windows/enable-rdp.bat",
+        "./scripts/windows/disable-auto-logon.bat"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "vagrant",
+      "only": ["vagrant-2012r2-dev"],
+      "output": "./builds/vagrant-2012r2-dev.box",
+      "vagrantfile_template": "./vagrantfile/2012r2dev/Vagrantfile"
+    },
+    {
+      "type": "amazon-import",
+      "only": ["2012r2-ami"],
+      "access_key": "{{user `access_key`}}",
+      "secret_key": "{{user `secret_key`}}",
+      "region": "us-west-2",
+      "s3_bucket_name": "or-01p-s3-001",
+      "tags": {
+           "Description": "packer windows 2012r2 amazon-import {{timestamp}}",
+           "Name": "2012r2-ami-{{timestamp}}"
+            }
+    }
+  ]
+}

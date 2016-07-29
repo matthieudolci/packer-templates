@@ -1,0 +1,48 @@
+<powershell>
+
+# set administrator password
+net user Administrator notsosecret
+wmic useraccount where "name='Administrator'" set PasswordExpires=FALSE
+
+# configure WinRM
+winrm quickconfig -q
+winrm quickconfig -transport:http
+winrm set winrm/config '@{MaxTimeoutms="7200000"}'
+winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="800"}'
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'  
+winrm set winrm/config/service/auth '@{Basic="true"}'
+winrm set winrm/config/client/auth '@{Basic="true"}'
+winrm set winrm/config/listener?Address=*+Transport=HTTP '@{Port="5985"}'
+
+netsh advfirewall firewall set rule group="remote administration" new enable=yes
+netsh advfirewall set allprofiles state off
+
+net stop winrm  
+sc config winrm start=auto  
+net start winrm
+
+# turn off PowerShell execution policy restrictions
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope LocalMachine
+
+# turn off windows updates
+cmd /c reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update" /v AUOptions /t REG_DWORD /d 1 /f
+
+# Show file extensions in Explorer
+cmd /c reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" /v HideFileExt /t REG_DWORD /d 0 /f
+
+# Enable QuickEdit mode
+cmd /c reg add add "HKCU\Console" /v QuickEdit /t REG_DWORD /d 1 /f
+
+# Show Run command in Start Menu
+cmd /c reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" /v Start_ShowRun /t REG_DWORD /d 1 /f
+
+# Show Administrative Tools in Start Menu
+cmd /c reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" /v StartMenuAdminTools /t REG_DWORD /d 1 /f
+
+# Zero Hibernation File
+cmd /c reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\" /v HibernateFileSizePercent /t REG_DWORD /d 0 /f
+
+# Disable Hibernation Mode
+cmd /c reg add "HKLM\SYSTEM\CurrentControlSet\Control\Power\" /v HibernateEnabled /t REG_DWORD /d 0 /f
+
+</powershell>

@@ -1,0 +1,200 @@
+{
+  "variables": {
+    "box_basename": "centos-7.1-x86_64",
+    "build_timestamp": "{{isotime \"20060102150405\"}}",
+    "access_key": "",
+    "secret_key": "",
+    "cpus": "2",
+    "disk_size": "40960",
+    "git_revision": "__unknown_git_revision__",
+    "headless": "true",
+    "iso_checksum": "7cf1ac8da13f54d6be41e3ccf228dc5bb35792f515642755ff4780d5714d4278",
+    "iso_checksum_type": "sha256",
+    "iso_name": "CentOS-7-x86_64-Minimal-1503-01.iso",
+    "ks_path_vagrant": "centos-7.1/vagrant/ks.cfg",
+    "ks_path_ami": "centos-7.1/ami/ks.cfg",
+    "memory": "4096",
+    "metadata": "floppy/metadata_centos-7.1-x86_64.json",
+    "mirror": "http://archive.kernel.org/",
+    "mirror_directory": "centos-vault/7.1.1503/isos/x86_64/",
+    "name": "centos-7.1",
+    "template": "centos-7.1-x86_64",
+    "version": "0.1.TIMESTAMP"
+  },
+  "builders": [
+    {
+      "boot_command": [
+        "<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{user `ks_path_vagrant`}}<enter><wait>"
+      ],
+      "type": "virtualbox-iso",
+      "name": "centos-7.1-x86_64-vagrant-dev",
+      "boot_wait": "10s",
+      "disk_size": "{{user `disk_size`}}",
+      "guest_additions_path": "VBoxGuestAdditions_{{.Version}}.iso",
+      "guest_os_type": "RedHat_64",
+      "hard_drive_interface": "sata",
+      "headless": "{{ user `headless` }}",
+      "http_directory": "http",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_url": "{{user `mirror`}}/{{user `mirror_directory`}}/{{user `iso_name`}}",
+      "output_directory": "packer-{{user `template`}}-vagrant-dev",
+      "shutdown_command": "echo 'vagrant' | sudo -S /sbin/halt -h -p",
+      "ssh_password": "vagrant",
+      "ssh_port": 22,
+      "ssh_username": "vagrant",
+      "ssh_wait_timeout": "10000s",
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "{{ user `memory` }}"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "{{ user `cpus` }}"
+        ]
+      ],
+      "virtualbox_version_file": ".vbox_version",
+      "vm_name": "packer-{{user `template`}}-vagrant-dev"
+    },
+    {
+      "boot_command": [
+        "<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{user `ks_path_ami`}}<enter><wait>"
+      ],
+      "type": "virtualbox-iso",
+      "format": "ova",
+      "name": "centos-7.1-x86_64-ami",
+      "boot_wait": "10s",
+      "disk_size": "{{user `disk_size`}}",
+      "guest_additions_mode": "disable",
+      "guest_os_type": "RedHat_64",
+      "hard_drive_interface": "sata",
+      "headless": "{{ user `headless` }}",
+      "http_directory": "http",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "iso_checksum_type": "{{user `iso_checksum_type`}}",
+      "iso_url": "{{user `mirror`}}/{{user `mirror_directory`}}/{{user `iso_name`}}",
+      "output_directory": "packer-{{user `template`}}-ami",
+      "shutdown_command": "echo 'root' | /sbin/halt -h -p",
+      "ssh_password": "nhu8BGY&",
+      "ssh_port": 22,
+      "ssh_username": "root",
+      "ssh_wait_timeout": "10000s",
+      "floppy_files": [
+        "floppy/ec2-get-ssh",
+        "floppy/ec2-run-user-data",
+        "floppy/dkms_autoinstaller",
+        "floppy/dkms.conf"
+      ],
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "{{ user `memory` }}"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "{{ user `cpus` }}"
+        ]
+      ],
+      "virtualbox_version_file": ".vbox_version",
+      "vm_name": "packer-{{user `template`}}-ami"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "only": ["centos-7.1-x86_64-vagrant-dev"],
+      "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E sh -eux '{{.Path}}'",
+        "environment_vars": [
+          "HOME_DIR=/home/vagrant"
+        ],
+      "scripts": [
+        "scripts/common/sshd.sh",
+        "scripts/centos/networking.sh",
+        "scripts/common/vagrant.sh",
+        "scripts/common/vmtools.sh",
+        "scripts/centos/cleanup.sh",
+        "scripts/common/minimize.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "only": ["centos-7.1-x86_64-ami"],
+      "scripts": [
+        "scripts/centos/networking.sh",
+        "scripts/common/sshd.sh",
+        "scripts/centos/awscli.sh",
+        "scripts/centos/networkenhancedstep1.sh",
+        "scripts/common/sshkey.sh"
+      ]
+    },
+    {
+      "type": "file",
+      "only": ["centos-7.1-x86_64-ami"],
+      "source": "floppy/dkms.conf",
+      "destination": "/usr/src/ixgbevf-2.14.2/dkms.conf"
+    },
+    {
+      "type": "file",
+      "only": ["centos-7.1-x86_64-ami"],
+      "source": "floppy/authorized_keys",
+      "destination": "/root/.ssh/authorized_keys"
+    },
+    {
+      "type": "file",
+      "only": ["centos-7.1-x86_64-ami"],
+      "source": "floppy/ec2-get-ssh",
+      "destination": "/etc/init.d/ec2-get-ssh"
+    },
+    {
+      "type": "file",
+      "only": ["centos-7.1-x86_64-ami"],
+      "source": "floppy/ec2-run-user-data",
+      "destination": "/etc/init.d/ec2-run-user-data"
+    },
+    {
+      "type": "file",
+      "only": ["centos-7.1-x86_64-ami"],
+      "source": "floppy/dkms_autoinstaller",
+      "destination": "/etc/init.d/dkms_autoinstaller"
+    },
+    {
+      "type": "shell",
+      "only": ["centos-7.1-x86_64-ami"],
+      "scripts": [
+        "scripts/centos/networkenhancedstep2.sh",
+        "scripts/common/chmod.sh",
+        "scripts/common/chkconfig.sh",
+        "scripts/centos/cleanup.sh",
+        "scripts/common/minimize.sh"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "only": ["centos-7.1-x86_64-vagrant-dev"],
+      "output": "builds/{{user `box_basename`}}.vagrant.box",
+      "type": "vagrant"
+    },
+    {
+      "type": "amazon-import",
+      "only": ["centos-7.1-x86_64-ami"],
+      "access_key": "{{user `access_key`}}",
+      "secret_key": "{{user `secret_key`}}",
+      "region": "us-west-2",
+      "s3_bucket_name": "or-01p-s3-001",
+      "tags": {
+           "Description": "packer centos-7.1-x86_64 amazon-import {{timestamp}}",
+           "Name": "centos-7.1-x86_64-{{timestamp}}"
+            }
+    }
+  ]
+}
