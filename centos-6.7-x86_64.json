@@ -2,8 +2,8 @@
   "variables": {
     "box_basename": "centos-6.7",
     "build_timestamp": "{{isotime \"20060102150405\"}}",
-    "access_key": "",
-    "secret_key": "",
+    "access_key": "$AWS_ACCESS_KEY",
+    "secret_key": "$AWS_SECRET_KEY",
     "cpus": "2",
     "disk_size": "40960",
     "git_revision": "__unknown_git_revision__",

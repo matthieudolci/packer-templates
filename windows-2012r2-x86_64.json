@@ -5,8 +5,8 @@
     "iso_checksum": "5e4ecb86fd8619641f1d58f96e8561ec",
     "autounattend_vagrant": "./answer_files/2012_r2/Autounattend.xml",
     "autounattend_aws": "./answer_files/2012_r2/aws/Autounattend.xml",
-    "access_key": "",
-    "secret_key": "",
+    "access_key": "$AWS_ACCESS_KEY",
+    "secret_key": "$AWS_SECRET_KEY",
     "user": "Administrator",
     "password": "notsosecret",
     "version": "0.1.TIMESTAMP"
